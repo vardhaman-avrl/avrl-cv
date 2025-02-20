@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Accounts</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <script>
+        async function suggestSelectors() {
+            const accountName = document.getElementById("account_name").value;
+            if (!accountName.includes("_")) {
+                alert("Invalid account format. Must contain '_'.");
+                return;
+            }
+
+            const website = accountName.split("_").pop();
+            const response = await fetch(`/get_selectors?website=${website}`);
+            const data = await response.json();
+
+            if (data && data.username_selector) {
+                document.getElementById("login_url").value = data.login_url;
+                document.getElementById("username_selector").value = data.username_selector;
+                document.getElementById("password_selector").value = data.password_selector;
+                document.getElementById("submit_selector").value = data.submit_selector;
+                document.getElementById("success_selector").value = data.success_selector;
+            } else {
+                alert("No matching selectors found.");
+            }
+        }
+
+        function showAlertAndReload(message) {
+            alert(message);
+            window.location.reload();
+        }
+
+        function populateFields(account) {
+            document.getElementById("account_name").value = account.account_name;
+            document.getElementById("login_url").value = account.login_url;
+            document.getElementById("username").value = account.username;
+            document.getElementById("password").value = account.password;
+            document.getElementById("username_selector").value = account.username_selector;
+            document.getElementById("password_selector").value = account.password_selector;
+            document.getElementById("submit_selector").value = account.submit_selector;
+            document.getElementById("success_selector").value = account.success_selector;
+            document.getElementById("form_action").value = "/edit_account";
+        }
+
+        async function loadAccountDetails() {
+            const selectedAccount = document.getElementById("existing_accounts").value;
+            if (!selectedAccount) return;
+
+            const response = await fetch(`/get_account_details?account_name=${selectedAccount}`);
+            const account = await response.json();
+            populateFields(account);
+        }
+
+        // Reset input fields when the page loads
+        window.onload = function() {
+            document.getElementById("account_name").value = "";
+            document.getElementById("login_url").value = "";
+            document.getElementById("username").value = "";
+            document.getElementById("password").value = "";
+            document.getElementById("username_selector").value = "";
+            document.getElementById("password_selector").value = "";
+            document.getElementById("submit_selector").value = "";
+            document.getElementById("success_selector").value = "";
+        };
+    </script>
+</head>
+<body class="container mt-4">
+    <h1 class="mb-4">Manage Accounts</h1>
+
+    <h2>Select Existing Account</h2>
+    <select id="existing_accounts" class="form-select w-auto mb-3" onchange="loadAccountDetails()">
+        <option value="">-- Select Account --</option>
+        {% for account in accounts %}
+        <option value="{{ account[0] }}">{{ account[0] }}</option>
+        {% endfor %}
+    </select>
+
+    <h2 id="form_heading">Add / Edit Account</h2>
+    <form method="post" id="account_form" action="/add_account" class="mb-4 row g-3"
+          onsubmit="event.preventDefault(); fetch(document.getElementById('form_action').value, {method: 'POST', body: new FormData(this)})
+          .then(() => showAlertAndReload('Account updated successfully.'))">
+        <input type="hidden" id="form_action" value="/add_account">
+
+        <div class="col-md-6">
+            <label class="form-label">Account Name:</label>
+            <div class="input-group">
+                <input type="text" name="account_name" id="account_name" class="form-control" required>
+                <button type="button" class="btn btn-secondary" onclick="suggestSelectors()">Suggest Selectors</button>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Login URL:</label>
+            <input type="text" name="login_url" id="login_url" class="form-control" required>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Username:</label>
+            <input type="text" name="username" id="username" class="form-control" required>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Password:</label>
+            <input type="password" name="password" id="password" class="form-control" required>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Username Selector:</label>
+            <input type="text" name="username_selector" id="username_selector" class="form-control" required>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Password Selector:</label>
+            <input type="text" name="password_selector" id="password_selector" class="form-control" required>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Submit Selector:</label>
+            <input type="text" name="submit_selector" id="submit_selector" class="form-control" required>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Success Selector:</label>
+            <input type="text" name="success_selector" id="success_selector" class="form-control" required>
+        </div>
+        <div class="col-12">
+            <button type="submit" class="btn btn-primary">Save Account</button>
+        </div>
+    </form>
+
+    <h2>Existing Accounts</h2>
+    <table class="table table-striped">
+        <thead class="table-dark">
+            <tr>
+                <th>Account Name</th>
+                <th>Login URL</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for account in accounts %}
+            <tr>
+                <td>{{ account[0] }}</td>
+                <td>{{ account[1] }}</td>
+                <td>
+                    <form method="post" action="/delete_account" style="display:inline;"
+                          onsubmit="event.preventDefault(); fetch('/delete_account', {method: 'POST', body: new FormData(this)})
+                          .then(() => showAlertAndReload('Account deleted successfully.'))">
+                        <input type="hidden" name="account_name" value="{{ account[0] }}">
+                        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
